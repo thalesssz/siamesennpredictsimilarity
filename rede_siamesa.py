@@ -7,8 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1N3--5rBwJtFbjS_lDGDPXilusbKS1wWU
 """
 
-#!pip install gdown
-
 import os
 import random
 import numpy as np
