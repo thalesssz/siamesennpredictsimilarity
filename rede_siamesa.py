@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1N3--5rBwJtFbjS_lDGDPXilusbKS1wWU
 """
 
-!pip install gdown
+#!pip install gdown
 
 import os
 import random
@@ -16,7 +16,15 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from PIL import Image
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Dense, Flatten, Lambda, Dropout
+from tensorflow.keras.layers import (
+    Input,
+    Conv2D,
+    MaxPooling2D,
+    Dense,
+    Flatten,
+    Lambda,
+    Dropout,
+)
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import backend as K
 from tensorflow.keras.callbacks import ReduceLROnPlateau
@@ -24,16 +32,21 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 import seaborn as sns
 import gdown
+import zipfile
 
 file_id = "1vb781N3ZpWXceYx4OmQkqIdrio1y63So"
 output_file = "imagens_final_modificado.zip"
 
-gdown.download(f"https://drive.google.com/uc?id={file_id}", output_file)
 
-!unzip -qq "/content/imagens_final_modificado.zip"
+if not os.path.isfile("imagens_final_modificado.zip"):
+    gdown.download(f"https://drive.google.com/uc?id={file_id}", output_file)
+
+with zipfile.ZipFile(output_file, "r") as zip_ref:
+    zip_ref.extractall(".")
+
 
 # Caminho para o diretório de imagens
-image_dir = "/content/imagens_final_modificado"
+image_dir = "./imagens_final_modificado"
 
 # Encontrar todos os arquivos de imagem
 image_files = [f for f in os.listdir(image_dir) if f.endswith(".png")]
@@ -73,6 +86,7 @@ for i in range(0, len(image_files), 2):
 combined = list(zip(image_paths, labels))
 random.shuffle(combined)
 image_paths[:], labels[:] = zip(*combined)
+
 
 def process_image(image_path):
     image = tf.io.read_file(image_path)
@@ -153,6 +167,7 @@ test_labels = np.array(test_labels)
 #     validation_data=([test_images_left, test_images_right], test_labels)
 # )
 
+
 def build_siamese_model(input_shape):
     """
     Base network to be shared (siamese).
@@ -160,16 +175,21 @@ def build_siamese_model(input_shape):
     input = Input(shape=input_shape)
 
     # Adicionando camadas Conv2D e MaxPooling2D
-    x = Conv2D(32, (3, 3), activation='relu')(input)
+    x = Conv2D(32, (3, 3), activation="relu")(input)
     x = MaxPooling2D((2, 2))(x)
-    x = Conv2D(64, (3, 3), activation='relu')(x)
+    x = Conv2D(64, (3, 3), activation="relu")(x)
     x = MaxPooling2D((2, 2))(x)
-    x = Conv2D(256, (3, 3), activation='relu')(x)
+    x = Conv2D(256, (3, 3), activation="relu")(x)
     x = MaxPooling2D((2, 2))(x)
 
     # Flatten e camadas Dense
     x = Flatten()(x)
-    x = Dense(256, activation="relu",)(x)  # Aumentando o número de neurônios
+    x = Dense(
+        256,
+        activation="relu",
+    )(
+        x
+    )  # Aumentando o número de neurônios
     x = Dropout(0.1)(x)  # Ajuste da taxa de dropout
     x = Dense(256, activation="relu")(x)
     x = Dropout(0.1)(x)
@@ -262,10 +282,18 @@ model.compile(loss="binary_crossentropy", optimizer=Adam(0.0001), metrics=["accu
 # model.compile(loss=contrastive_loss_with_margin(margin), optimizer='Adam', metrics=["accuracy"])
 
 # Cria um callback que reduz o learning_rate se não houver melhora na perda de validação
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.00001)
+reduce_lr = ReduceLROnPlateau(
+    monitor="val_loss", factor=0.2, patience=5, min_lr=0.00001
+)
 
 # Incluindo callback no treinamento
-history = model.fit([train_images_left, train_images_right], train_labels, epochs=30, validation_data=([test_images_left, test_images_right], test_labels), callbacks=[reduce_lr])
+history = model.fit(
+    [train_images_left, train_images_right],
+    train_labels,
+    epochs=30,
+    validation_data=([test_images_left, test_images_right], test_labels),
+    callbacks=[reduce_lr],
+)
 
 # Treinando o modelo - ORIGINAL
 # model.fit(
@@ -277,7 +305,9 @@ history = model.fit([train_images_left, train_images_right], train_labels, epoch
 # )
 
 # Avaliando o modelo no conjunto de teste
-test_loss, test_accuracy = model.evaluate([test_images_left, test_images_right], test_labels)
+test_loss, test_accuracy = model.evaluate(
+    [test_images_left, test_images_right], test_labels
+)
 print("Test Loss:", test_loss)
 print("Test Accuracy:", test_accuracy)
 
@@ -285,23 +315,24 @@ print("Test Accuracy:", test_accuracy)
 plt.figure(figsize=(12, 4))
 
 plt.subplot(1, 2, 1)
-plt.plot(history.history['loss'], label='Train Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
-plt.title('Perda durante o Treinamento e Validação')
-plt.ylabel('Perda')
-plt.xlabel('Época')
+plt.plot(history.history["loss"], label="Train Loss")
+plt.plot(history.history["val_loss"], label="Validation Loss")
+plt.title("Perda durante o Treinamento e Validação")
+plt.ylabel("Perda")
+plt.xlabel("Época")
 plt.legend()
 
 # Gráfico para a acurácia
 plt.subplot(1, 2, 2)
-plt.plot(history.history['accuracy'], label='Train Accuracy')
-plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-plt.title('Acurácia durante o Treinamento e Validação')
-plt.ylabel('Acurácia')
-plt.xlabel('Época')
+plt.plot(history.history["accuracy"], label="Train Accuracy")
+plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
+plt.title("Acurácia durante o Treinamento e Validação")
+plt.ylabel("Acurácia")
+plt.xlabel("Época")
 plt.legend()
 
 plt.show()
+
 
 def predict_similarity(model, image_path1, image_path2):
     # Processar as imagens
@@ -309,14 +340,17 @@ def predict_similarity(model, image_path1, image_path2):
     image2 = process_image(image_path2)
 
     # Fazer a previsão
-    prediction = model.predict([np.expand_dims(image1, axis=0), np.expand_dims(image2, axis=0)])
+    prediction = model.predict(
+        [np.expand_dims(image1, axis=0), np.expand_dims(image2, axis=0)]
+    )
 
     # Interpretar o resultado
     similarity = prediction[0][0]
-    if similarity > 0.5: #limiar estabelecido empiricamente
+    if similarity > 0.5:  # limiar estabelecido empiricamente
         return "Similares", similarity
     else:
         return "Não similares", similarity
+
 
 def display_images_with_prediction(model, image_path1, image_path2):
     # Fazendo a previsão
@@ -330,36 +364,39 @@ def display_images_with_prediction(model, image_path1, image_path2):
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     axs[0].imshow(img1)
     axs[0].set_title("Imagem 1")
-    axs[0].axis('off')
+    axs[0].axis("off")
 
     axs[1].imshow(img2)
     axs[1].set_title("Imagem 2")
-    axs[1].axis('off')
+    axs[1].axis("off")
 
-    plt.suptitle(f"Classificação da Rede: {prediction} \n(Similaridade: {similarity:.2f})")
+    plt.suptitle(
+        f"Classificação da Rede: {prediction} \n(Similaridade: {similarity:.2f})"
+    )
     plt.show()
+
 
 # from tensorflow.keras.models import load_model
 # model = load_model('/content/drive/MyDrive/meu_modelo.keras', safe_mode=False)
 
 # caminho das imagens para predição
 
-image_path1 = '/content/imagens_final_modificado/13 (2).png'
-image_path2 = '/content/imagens_final_modificado/13.png'
+image_path1 = "./imagens_final_modificado/13 (2).png"
+image_path2 = "./imagens_final_modificado/13.png"
 
 display_images_with_prediction(model, image_path1, image_path2)
 
 predictions = model.predict([test_images_left, test_images_right])
-predicted_labels = (predictions > 0.5).astype('int').flatten()
+predicted_labels = (predictions > 0.5).astype("int").flatten()
 
 cm = confusion_matrix(test_labels, predicted_labels)
 
 sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-plt.ylabel('True Label')
-plt.xlabel('Predicted Label')
+plt.ylabel("True Label")
+plt.xlabel("Predicted Label")
 plt.show()
 
-#model.save('meu_modelo.h5')  # Salva o modelo
+# model.save('meu_modelo.h5')  # Salva o modelo
 # model.save('meu_modelo.keras')
 
 # !mv "/content/meu_modelo.keras" "/content/drive/MyDrive/"
